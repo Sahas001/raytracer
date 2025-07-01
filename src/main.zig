@@ -10,6 +10,29 @@ const Color = packed struct {
     rgb: RGB,
 };
 
+const point3 = Vec3;
+
+const Ray = struct {
+    orig: point3,
+    dir: Vec3,
+
+    pub fn init(orig: Vec3, dir: point3) Ray {
+        return Ray{
+            .orig = orig,
+            .dir = dir,
+        };
+    }
+    pub fn at(self: Ray, t: f64) point3 {
+        return self.origin.add(self.direction.multiply(t));
+    }
+    pub fn origin(self: Ray) point3 {
+        return self.origin;
+    }
+    pub fn direction(self: Ray) Vec3 {
+        return self.dir;
+    }
+};
+
 const Vec3 = struct {
     data: @Vector(3, f64),
 
@@ -44,6 +67,31 @@ const Vec3 = struct {
                 self.data[2] + other.data[2],
             },
         };
+    }
+    pub fn multiply(self: Vec3, scalar: f64) Vec3 {
+        return Vec3{
+            .data = .{
+                self.data[0] * scalar,
+                self.data[1] * scalar,
+                self.data[2] * scalar,
+            },
+        };
+    }
+    pub fn divide(self: Vec3, scalar: f64) Vec3 {
+        return Vec3{
+            .data = .{
+                self.data[0] / scalar,
+                self.data[1] / scalar,
+                self.data[2] / scalar,
+            },
+        };
+    }
+
+    pub fn lengthSquared(self: Vec3) f64 {
+        return self.data[0] * self.data[0] + self.data[1] * self.data[1] + self.data[2] * self.data[2];
+    }
+    pub fn length(self: Vec3) f64 {
+        return std.math.sqrt(self.lengthSquared());
     }
 };
 
@@ -82,9 +130,21 @@ const PPM = struct {
 };
 
 pub fn main() !void {
+
+    // Aspect ratio
+    const aspect_ratio: f64 = 16.0 / 9.0;
+    const image_width: usize = 400;
+
     // Image
-    const image_width: usize = 256;
-    const image_height: usize = 256;
+    const image_height: usize = @intCast(image_width / aspect_ratio);
+    image_height = @max(image_height, 1); // Ensure height is at least 1
+
+    // Viewport
+    const viewport_height: f64 = 2.0;
+    const viewport_width: f64 = viewport_height * (@as(f64, (image_width / image_height)));
+
+    // NOTE: Just to avoid unused variable warning
+    _ = viewport_width;
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
