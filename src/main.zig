@@ -10,6 +10,22 @@ const Color = packed struct {
     rgb: RGB,
 };
 
+fn ray_color(ray: Ray) Color {
+    const unit_direction: Vec3 = ray.direction().divide(ray.direction().length());
+    const t: f64 = 0.5 * (unit_direction.y() + 1.0);
+    const white = Vec3.init(1.0, 1.0, 1.0);
+    const blue = Vec3.init(0.5, 0.7, 1.0);
+    const blended = white.multiply(1.0 - t).add(blue.multiply(t));
+
+    return Color{
+        .rgb = RGB{
+            .r = @intFromFloat(255.999 * blended.x()),
+            .g = @intFromFloat(255.999 * blended.y()),
+            .b = @intFromFloat(255.999 * blended.z()),
+        },
+    };
+}
+
 const point3 = Vec3;
 
 const Ray = struct {
@@ -68,6 +84,17 @@ const Vec3 = struct {
             },
         };
     }
+
+    pub fn sub(self: Vec3, other: Vec3) Vec3 {
+        return Vec3{
+            .data = .{
+                self.data[0] - other.data[0],
+                self.data[1] - other.data[1],
+                self.data[2] - other.data[2],
+            },
+        };
+    }
+
     pub fn multiply(self: Vec3, scalar: f64) Vec3 {
         return Vec3{
             .data = .{
@@ -133,18 +160,31 @@ pub fn main() !void {
 
     // Aspect ratio
     const aspect_ratio: f64 = 16.0 / 9.0;
-    const image_width: usize = 400;
+    const image_width: u64 = 400;
 
     // Image
-    const image_height: usize = @intCast(image_width / aspect_ratio);
+    var image_height: u64 = @intFromFloat(image_width / aspect_ratio);
     image_height = @max(image_height, 1); // Ensure height is at least 1
 
-    // Viewport
-    const viewport_height: f64 = 2.0;
-    const viewport_width: f64 = viewport_height * (@as(f64, (image_width / image_height)));
+    // Camera
 
-    // NOTE: Just to avoid unused variable warning
-    _ = viewport_width;
+    const focal_length = 1.0;
+    const viewport_height: f64 = 2.0;
+    const mutiplier: f64 = @floatFromInt(image_width / image_height);
+    const viewport_width: f64 = viewport_height * mutiplier;
+    const camera_center = point3.init(0, 0, 0);
+
+    // Vectors across horizontal and vertical axes
+
+    const viewport_horizontal = Vec3.init(viewport_width, 0, 0);
+    const viewport_vertical = Vec3.init(0, -viewport_height, 0);
+
+    const pixel_delta_horizontal = viewport_horizontal.divide(@floatFromInt(image_width));
+    const pixel_delta_vertical = viewport_vertical.divide(@floatFromInt(image_height));
+
+    const viewport_origin = camera_center.sub(Vec3.init(0, 0, focal_length)).sub(viewport_vertical.multiply(0.5)).sub(viewport_horizontal.multiply(0.5));
+
+    const pixel_origin = viewport_origin.add(pixel_delta_horizontal.multiply(0.5)).add(pixel_delta_vertical.multiply(0.5));
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -156,21 +196,34 @@ pub fn main() !void {
     for (0..image_height) |y| {
         std.debug.print("Row remaining {d}\n", .{image_height - y});
         for (0..image_width) |x| {
-            var r: f64 = @as(f64, @floatFromInt(x)) / @as(f64, @floatFromInt(image_width - 1));
-            var g: f64 = @as(f64, @floatFromInt(y)) / @as(f64, @floatFromInt(image_width - 1));
-            var b: f64 = 0;
-
-            r *= 255.999;
-            g *= 255.999;
-            b *= 255.999;
-
             const index = y * image_width + x;
+            const pixel_position = pixel_origin.add(pixel_delta_horizontal.multiply(@floatFromInt(x))).add(pixel_delta_vertical.multiply(@floatFromInt(y)));
+            const ray_direction = pixel_position.sub(camera_center);
+
+            const ray = Ray.init(camera_center, ray_direction);
+            const color = ray_color(ray);
 
             ppm.data[index].rgb = RGB{
-                .r = @intFromFloat(r),
-                .g = @intFromFloat(g),
-                .b = @intFromFloat(b),
+                .r = color.rgb.r,
+                .g = color.rgb.g,
+                .b = color.rgb.b,
             };
+
+            // var r: f64 = @as(f64, @floatFromInt(x)) / @as(f64, @floatFromInt(image_width - 1));
+            // var g: f64 = @as(f64, @floatFromInt(y)) / @as(f64, @floatFromInt(image_width - 1));
+            // var b: f64 = 0;
+            //
+            // r *= 255.999;
+            // g *= 255.999;
+            // b *= 255.999;
+            //
+            // const index = y * image_width + x;
+            //
+            // ppm.data[index].rgb = RGB{
+            //     .r = @intFromFloat(r),
+            //     .g = @intFromFloat(g),
+            //     .b = @intFromFloat(b),
+            // };
         }
     }
     std.debug.print("Done.      \n", .{});
