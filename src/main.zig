@@ -182,9 +182,14 @@ pub fn main() !void {
     const pixel_delta_horizontal = viewport_horizontal.divide(@floatFromInt(image_width));
     const pixel_delta_vertical = viewport_vertical.divide(@floatFromInt(image_height));
 
-    const viewport_origin = camera_center.sub(Vec3.init(0, 0, focal_length)).sub(viewport_vertical.multiply(0.5)).sub(viewport_horizontal.multiply(0.5));
+    const viewport_origin = camera_center
+        .sub(Vec3.init(0, 0, focal_length))
+        .sub(viewport_vertical.multiply(0.5))
+        .sub(viewport_horizontal.multiply(0.5));
 
-    const pixel_origin = viewport_origin.add(pixel_delta_horizontal.multiply(0.5)).add(pixel_delta_vertical.multiply(0.5));
+    const pixel_origin = viewport_origin
+        .add(pixel_delta_horizontal.multiply(0.5))
+        .add(pixel_delta_vertical.multiply(0.5));
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -197,7 +202,11 @@ pub fn main() !void {
         std.debug.print("Row remaining {d}\n", .{image_height - y});
         for (0..image_width) |x| {
             const index = y * image_width + x;
-            const pixel_position = pixel_origin.add(pixel_delta_horizontal.multiply(@floatFromInt(x))).add(pixel_delta_vertical.multiply(@floatFromInt(y)));
+
+            const pixel_position = pixel_origin
+                .add(pixel_delta_horizontal.multiply(@floatFromInt(x)))
+                .add(pixel_delta_vertical.multiply(@floatFromInt(y)));
+
             const ray_direction = pixel_position.sub(camera_center);
 
             const ray = Ray.init(camera_center, ray_direction);
@@ -208,22 +217,6 @@ pub fn main() !void {
                 .g = color.rgb.g,
                 .b = color.rgb.b,
             };
-
-            // var r: f64 = @as(f64, @floatFromInt(x)) / @as(f64, @floatFromInt(image_width - 1));
-            // var g: f64 = @as(f64, @floatFromInt(y)) / @as(f64, @floatFromInt(image_width - 1));
-            // var b: f64 = 0;
-            //
-            // r *= 255.999;
-            // g *= 255.999;
-            // b *= 255.999;
-            //
-            // const index = y * image_width + x;
-            //
-            // ppm.data[index].rgb = RGB{
-            //     .r = @intFromFloat(r),
-            //     .g = @intFromFloat(g),
-            //     .b = @intFromFloat(b),
-            // };
         }
     }
     std.debug.print("Done.      \n", .{});
