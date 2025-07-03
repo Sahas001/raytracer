@@ -10,8 +10,29 @@ const Color = packed struct {
     rgb: RGB,
 };
 
+fn hitSphere(center: point3, radius: f64, ray: Ray) bool {
+    const oc = ray.origin().sub(center);
+    const a = ray.direction().dot(ray.direction());
+    const b = -2.0 * oc.dot(ray.direction());
+    const c = oc.dot(oc) - radius * radius;
+    const discriminant = b * b - 4 * a * c;
+    return (discriminant >= 0);
+}
+
 fn ray_color(ray: Ray) Color {
-    const unit_direction: Vec3 = ray.direction().divide(ray.direction().length());
+    const sphere_center = point3.init(0, 0, -1);
+    const radius = 0.5;
+    if (hitSphere(sphere_center, radius, ray)) {
+        return Color{
+            .rgb = RGB{
+                .r = @intFromFloat(255.999 * 1),
+                .g = @intFromFloat(255.999 * 0),
+                .b = @intFromFloat(255.999 * 0),
+            },
+        };
+    }
+
+    const unit_direction: Vec3 = ray.direction().unitVector();
     const t: f64 = 0.5 * (unit_direction.y() + 1.0);
     const white = Vec3.init(1.0, 1.0, 1.0);
     const blue = Vec3.init(0.5, 0.7, 1.0);
@@ -32,7 +53,7 @@ const Ray = struct {
     orig: point3,
     dir: Vec3,
 
-    pub fn init(orig: Vec3, dir: point3) Ray {
+    pub fn init(orig: point3, dir: Vec3) Ray {
         return Ray{
             .orig = orig,
             .dir = dir,
@@ -42,7 +63,7 @@ const Ray = struct {
         return self.origin.add(self.direction.multiply(t));
     }
     pub fn origin(self: Ray) point3 {
-        return self.origin;
+        return self.orig;
     }
     pub fn direction(self: Ray) Vec3 {
         return self.dir;
@@ -119,6 +140,28 @@ const Vec3 = struct {
     }
     pub fn length(self: Vec3) f64 {
         return std.math.sqrt(self.lengthSquared());
+    }
+    pub fn dot(self: Vec3, other: Vec3) f64 {
+        return self.data[0] * other.data[0] + self.data[1] * other.data[1] + self.data[2] * other.data[2];
+    }
+    pub fn cross(self: Vec3, other: Vec3) Vec3 {
+        return Vec3{
+            .data = .{
+                self.data[1] * other.data[2] - self.data[2] * other.data[1],
+                self.data[2] * other.data[0] - self.data[0] * other.data[2],
+                self.data[0] * other.data[1] - self.data[1] * other.data[0],
+            },
+        };
+    }
+    pub fn normalize(self: Vec3) Vec3 {
+        const len = self.length();
+        if (len == 0) {
+            return self; // Avoid division by zero
+        }
+        return self.divide(len);
+    }
+    pub fn unitVector(self: Vec3) Vec3 {
+        return self.normalize();
     }
 };
 
