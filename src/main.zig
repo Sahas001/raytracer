@@ -10,11 +10,28 @@ const Color = packed struct {
     rgb: RGB,
 };
 
+const sphere = struct {
+    center: point3,
+    radius: f64,
+
+    pub fn init(center: point3, radius: f64) sphere {
+        return sphere{ .center = center, .radius = radius };
+    }
+
+    pub fn hit(self: sphere, ray: Ray) f64 {
+        return hitSphere(self.center, self.radius, ray);
+
+        // TODO: This function should be overridden by the concrete hittable types.
+        // Find the nearest intersection of the ray with the sphere.
+
+    }
+};
+
 fn hitSphere(center: point3, radius: f64, ray: Ray) f64 {
     const oc = ray.origin().sub(center);
     const a = ray.direction().lengthSquared();
-    const b = oc.dot(ray.direction());
-    const c = oc.dot(oc) - radius * radius;
+    const b = ray.direction().dot(oc);
+    const c = oc.lengthSquared() - radius * radius;
     const discriminant = b * b - a * c;
 
     std.debug.print("a = {d}, b = {d}, c = {d}, discriminant = {d}\n", .{ a, b, c, discriminant });
@@ -57,7 +74,7 @@ fn ray_color(ray: Ray) Color {
     };
 }
 
-const point3 = Vec3;
+pub const point3 = Vec3;
 
 const Ray = struct {
     orig: point3,
@@ -80,7 +97,7 @@ const Ray = struct {
     }
 };
 
-const Vec3 = struct {
+pub const Vec3 = struct {
     data: @Vector(3, f64),
 
     pub fn init(a: f64, b: f64, c: f64) Vec3 {
