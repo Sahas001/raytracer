@@ -10,33 +10,43 @@ const Color = packed struct {
     rgb: RGB,
 };
 
-fn hitSphere(center: point3, radius: f64, ray: Ray) bool {
+fn hitSphere(center: point3, radius: f64, ray: Ray) f64 {
     const oc = ray.origin().sub(center);
-    const a = ray.direction().dot(ray.direction());
-    const b = -2.0 * oc.dot(ray.direction());
+    const a = ray.direction().lengthSquared();
+    const b = oc.dot(ray.direction());
     const c = oc.dot(oc) - radius * radius;
-    const discriminant = b * b - 4 * a * c;
-    return (discriminant >= 0);
+    const discriminant = b * b - a * c;
+
+    std.debug.print("a = {d}, b = {d}, c = {d}, discriminant = {d}\n", .{ a, b, c, discriminant });
+
+    if (discriminant < 0) {
+        return -1.0;
+    } else {
+        return (-b - std.math.sqrt(discriminant)) / a;
+    }
 }
 
 fn ray_color(ray: Ray) Color {
     const sphere_center = point3.init(0, 0, -1);
     const radius = 0.5;
-    if (hitSphere(sphere_center, radius, ray)) {
+    const t = hitSphere(sphere_center, radius, ray);
+    std.debug.print("t = {d}\n", .{t});
+    if (t > 0.0) {
+        const N = ray.at(t).sub(sphere_center).unitVector();
         return Color{
             .rgb = RGB{
-                .r = @intFromFloat(255.999 * 1),
-                .g = @intFromFloat(255.999 * 0),
-                .b = @intFromFloat(255.999 * 0),
+                .r = @intFromFloat(255.999 * (N.x() + 1.0) * 0.5),
+                .g = @intFromFloat(255.999 * (N.y() + 1.0) * 0.5),
+                .b = @intFromFloat(255.999 * (N.z() + 1.0) * 0.5),
             },
         };
     }
 
     const unit_direction: Vec3 = ray.direction().unitVector();
-    const t: f64 = 0.5 * (unit_direction.y() + 1.0);
+    const a: f64 = 0.5 * (unit_direction.y() + 1.0);
     const white = Vec3.init(1.0, 1.0, 1.0);
     const blue = Vec3.init(0.5, 0.7, 1.0);
-    const blended = white.multiply(1.0 - t).add(blue.multiply(t));
+    const blended = white.multiply(1.0 - a).add(blue.multiply(a));
 
     return Color{
         .rgb = RGB{
@@ -60,7 +70,7 @@ const Ray = struct {
         };
     }
     pub fn at(self: Ray, t: f64) point3 {
-        return self.origin.add(self.direction.multiply(t));
+        return self.orig.add(self.dir.multiply(t));
     }
     pub fn origin(self: Ray) point3 {
         return self.orig;
@@ -213,7 +223,7 @@ pub fn main() !void {
 
     const focal_length = 1.0;
     const viewport_height: f64 = 2.0;
-    const mutiplier: f64 = @floatFromInt(image_width / image_height);
+    const mutiplier = @as(f64, @floatFromInt(image_width)) / @as(f64, @floatFromInt(image_height));
     const viewport_width: f64 = viewport_height * mutiplier;
     const camera_center = point3.init(0, 0, 0);
 
